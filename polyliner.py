@@ -1,8 +1,8 @@
 from svg.path import parse_path
 from svg.path.path import Line, Arc, QuadraticBezier, CubicBezier,Move,Close
-from PIL import Image,ImageDraw,ImageFont
-from plotter import Plotter
-from color import Color
+#from PIL import Image,ImageDraw,ImageFont
+#from plotter import Plotter
+#from color import Color
 from pickle import NONE
 from scipy.spatial import distance
 
@@ -117,6 +117,8 @@ def polyliner(path_strings, segments=10,weldradius=12,quantization=1):
                 
     # debug show the image as read    
     if False:
+        from PIL import Image,ImageDraw
+        from color import Color
         im= Image.new(mode="RGB", size=(11*250,int(8.5*250)),color=(255,255,255))
         imd=ImageDraw.Draw(im)    
         c=Color(0,0,0)
@@ -142,15 +144,12 @@ def polyliner(path_strings, segments=10,weldradius=12,quantization=1):
         pointlinereferences[line[0]].append(linei)
         pointlinereferences[line[1]].append(linei)
 
-
     '''
     New weld routine - "always weld closest vertices"
         calculate distance and index to nearest vertex for all vertices
         while there are two vertices with edges closer than weldr:
             Combine the closest two vertices
             Calculate shortest distance for the new vertex and for vertices in the neighborhood
-             
-                
     '''
 
     '''
@@ -211,20 +210,9 @@ def polyliner(path_strings, segments=10,weldradius=12,quantization=1):
                 welds+=1
                 welded+=len(weldlist)
 
-            
-
-
-    ''' 
-    gather polyline statistics
-        histogram by length
-        draw histogram into image
-        text into image: minlen count, maxlen, count, average len, median len
-    '''
-
     # create polylines from lines and points
     polylines=[]    
     currentposition=(0,0)    # current position
-    histogram={}
     while (True):
         # find point with connected lines closest to current position 
         nextindex=-1
@@ -285,74 +273,6 @@ def polyliner(path_strings, segments=10,weldradius=12,quantization=1):
                     break
             # add this polyline to the list of polylines
             polylines.append(polyline)
-            
-            # update statistics about polylines this long
-            l=len(polyline)
-            histogram[l]=histogram.get(l,0)+1
                 
-
     #now polylines contains a list of polylines which are lists of ordered points
-
-    # Draw image statistics and reference information  
-    im= Image.new(mode="RGB", size=(11*250,int(8.5*250)),color=(255,255,255))
-    imd=ImageDraw.Draw(im)
-
-    # specified font size
-    #font = ImageFont.truetype(r'C:\Users\System-Pc\Desktop\arial.ttf', 20)
-    font=ImageFont.load_default(); 
-
-    polylineaverage=0
-    polylinecount=0
-    polylinelongest=0;
-    for length,count in histogram.items():
-        imd.line([(length,0),(length,count)],fill=(0,64,0))
-        if length>polylinelongest:
-            polylinelongest=length
-        polylinecount+=length
-        polylineaverage+=length*count
-    polylineaverage/=polylinecount
-    
-    # drawing text size
-    imd.text(  (5, 500), 
-                text='welds:%d\nwelded:%d\npolylines:%d\nlongest polyline:%d\npolyline average:%.2f'%
-                    (welds,welded,polylinecount,polylinelongest, polylineaverage), 
-                font = font,
-                fill ="black",  
-                align ="left")
-
-    # 1 inch square
-    imd.rectangle((100,700,100+250,700+250), fill = None, outline =(128,128,128))
-    # quantization square
-    imd.rectangle((100,700,100+quantization-1,700+quantization-1), fill = None, outline ='orange')
-    # weld radius circle
-    imd.ellipse((100,700,100+weldradius*2,700+weldradius*2), fill = None, outline ='blue')
-
-    # draw the polylines to the plotter and to the image 
-    # open plotter       
-    plotter=Plotter()
-    #plotter.pen(1)
-    c=Color(0,0,0)
-    delta=8    
-    print(plotter.slow(), end ="")
-    for polyline in polylines:
-        print(plotter.move(polyline[0][0],polyline[0][1]), end ="")
-        print(plotter.pendown(), end ="")
-        color=c.rnd()
-        for i in range(1,len(polyline)):
-            print(plotter.move(polyline[i][0],polyline[i][1]), end ="")
-            imd.line([(polyline[i-1][0],polyline[i-1][1]),(polyline[i][0],polyline[i][1])],fill=color,width=3)
-        print(plotter.penup(), end ="")
-        c.inc(delta)
-    print(plotter.penup(), end ="")
-    print(plotter.move(plotter.maxx,plotter.maxy))
-    
-    # hack: have to print 1024 characters to flush the buffer
-    for i in range(16):
-        print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
-    print()
-        
-    im.show()
-    
-
-    # release plotter
-    plotter=None
+    return polylines

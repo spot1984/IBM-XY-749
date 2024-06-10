@@ -106,7 +106,7 @@ PenVelocity     = "F10,%d\n"
 
     ToDo:
         Colors
-            Pass pen colors in on command line: pen colors (optional, default 000000) -p0=#000000
+            x Pass pen colors in on command line: pen colors (optional, default 000000) -p0=#000000
             Parse path styles and extract stroke:#rrggbb or fill="#DDB893"
             Lab Cie or Hue matching of color to pen color
             Command line to select fill color or line color (default)
@@ -216,15 +216,101 @@ for path in doc.getElementsByTagName('path'):
     id=path.getAttribute('id')
     d=path.getAttribute('d')
     style=path.getAttribute('style')
-    print(id,style)
-'''
-  
+    styled=dict(item.split(":") for item in style.split(";"))
+    print(id,style,styled['fill'],styled['stroke'])
+exit(0)
+'''  
 
 path_strings = [path.getAttribute('d') for path
                 in doc.getElementsByTagName('path')]
 doc.unlink()
 
+
+
 if 0:
     simple(path_strings)
 else:
-    polyliner(path_strings,segments=7,quantization=1,weldradius=0)
+    polylines = polyliner(path_strings,segments=7,quantization=1,weldradius=0)
+
+from PIL import Image,ImageDraw,ImageFont
+from plotter import Plotter
+from color import Color
+
+
+# stub in variables to be handled later
+quantization=1
+welded=0
+welds=0
+weldradius=0
+
+# Build histogram of polyline lengths
+histogram={}
+for polyline in polylines:
+    l=len(polyline)
+    histogram[l]=histogram.get(l,0)+1
+
+# Draw image statistics and reference information  
+im= Image.new(mode="RGB", size=(11*250,int(8.5*250)),color=(255,255,255))
+imd=ImageDraw.Draw(im)
+
+# specified font size
+#font = ImageFont.truetype(r'C:\Users\System-Pc\Desktop\arial.ttf', 20)
+font=ImageFont.load_default(); 
+
+polylineaverage=0
+polylinecount=0
+polylinelongest=0;
+for length,count in histogram.items():
+    imd.line([(length,0),(length,count)],fill=(0,64,0))
+    if length>polylinelongest:
+        polylinelongest=length
+    polylinecount+=length
+    polylineaverage+=length*count
+polylineaverage/=polylinecount
+
+# drawing text size
+imd.text(  (5, 500), 
+            text='welds:%d\nwelded:%d\npolylines:%d\nlongest polyline:%d\npolyline average:%.2f'%
+                (welds,welded,polylinecount,polylinelongest, polylineaverage), 
+            font = font,
+            fill ="black",  
+            align ="left")
+
+# 1 inch square
+imd.rectangle((100,700,100+250,700+250), fill = None, outline =(128,128,128))
+# quantization square
+imd.rectangle((100,700,100+quantization-1,700+quantization-1), fill = None, outline ='orange')
+# weld radius circle
+imd.ellipse((100,700,100+weldradius*2,700+weldradius*2), fill = None, outline ='blue')
+
+# draw the polylines to the plotter and to the image 
+# open plotter       
+plotter=Plotter()
+#plotter.pen(1)
+c=Color(0,0,0)
+delta=8    
+print(plotter.slow(), end ="")
+for polyline in polylines:
+    print(plotter.move(polyline[0][0],polyline[0][1]), end ="")
+    print(plotter.pendown(), end ="")
+    color=c.rnd()
+    for i in range(1,len(polyline)):
+        print(plotter.move(polyline[i][0],polyline[i][1]), end ="")
+        imd.line([(polyline[i-1][0],polyline[i-1][1]),(polyline[i][0],polyline[i][1])],fill=color,width=3)
+    print(plotter.penup(), end ="")
+    c.inc(delta)
+print(plotter.penup(), end ="")
+print(plotter.move(plotter.maxx,plotter.maxy))
+
+# hack: have to print 1024 characters to flush the buffer
+for i in range(16):
+    print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
+print()
+    
+im.show()
+
+
+# release plotter
+plotter=None
+
+
