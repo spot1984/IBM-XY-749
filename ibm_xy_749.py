@@ -105,35 +105,39 @@ PenVelocity     = "F10,%d\n"
         
 
     ToDo:
-        Get into spot1984 github
-        Include OpenSCAD pen holder in github
-        Upload sharpie holder to thingiverse
-        Polyliner should only deal with geometry (to be run on each color)
-        Final render should include all colors
-        Output should parse geometries and output with pen changes
-        Command line include options
-            pen colors (optional, default 000000) -p0=#000000
-        Parse path styles and extract stroke:#rrggbb color
-        Match colors
-        
-        
-        Separate polyliner line generation from screen drawing and plotting
-        Separate polyines by color and assign pens
-        
+        Colors
+            Pass pen colors in on command line: pen colors (optional, default 000000) -p0=#000000
+            Parse path styles and extract stroke:#rrggbb or fill="#DDB893"
+            Lab Cie or Hue matching of color to pen color
+            Command line to select fill color or line color (default)
+            Collect polylines for each pen and process accordingly
+            Polyliner should only deal with geometry (to be run on each color)
+            Separate polyliner line generation from screen drawing and plotting
+            Separate polyines by color and assign pens
+            Final render should include all colors
+            Output all moves for each pen in order (light to dark recommended)
+
+        Models
+            Include OpenSCAD pen holder in github
+            Penholder in customizer
+            Upload pen holders to thingiverse
+            Output should parse geometries and output with pen changes
+     
 '''
 import sys
 from xml.dom import minidom
 from simple import simple
 from polyliner import polyliner
+#from numpy.distutils.fcompiler import none
 
-if len(sys.argv)!=2:
+def help():
     print("IBMxy749.py converts svg paths into plotter commands")
     print("")
     print("Usage to send directly to the plotter:")
     print("    Linux:")
-    print("        python ibm_xy_749.py input.svg >/dev/ttyS0")
+    print("        python ibm_xy_749.py [-h] [-pn=#RRGGBB] input.svg >/dev/ttyS0")
     print("    Windows:")
-    print("        python ibm_xy_749.py input.svg >com10:")
+    print("        python ibm_xy_749.py [-h] [-pn=#RRGGBB] input.svg >com10:")
     print("")
     print("Usage to send to a file:")
     print("    Linux/Windows:")
@@ -146,10 +150,57 @@ if len(sys.argv)!=2:
     print("")
     print("These examples assume plotter is connected to /dev/sttyS0 in Linux")
     print("or com10: in Windows, replace with actual device in your system.")
-    exit(1)
 
-# target path is first and only argument
-svgfilespec=sys.argv[1]
+
+# default is one black pen
+pens={0:(0,0,0)}
+
+# parse parameters
+progname=None
+
+# svg file specification
+svgfilespec=None
+
+# use fill color (line color default)
+usefillcolor=False
+
+for arg in sys.argv:
+    argl=arg.lower()
+    # -h 
+    if argl[0:1]=='-h':
+        help()
+        exit(0)
+    # -f enable fill color usage
+    if argl[0:1]=='-f':
+        usefillcolor=True
+    # -p0=#RRGGBB
+    if argl[0:2]=='-p' and arg[3:5]=='=#':
+        if len(arg)!=11:
+            print('ERROR: Pen format incorrect ("-pn=#RRGGBB"):',arg)
+            exit(1)
+        pen=int(argl[2:3])
+        red=int(arg[5:7],16)
+        green=int(arg[7:9],16)
+        blue=int(arg[9:11],16)
+        pens[pen]=(red,green,blue)
+        if pen>7: 
+            print("ERROR: Pen out of range (0-7):",pen)
+            exit(1)
+    else:
+        if progname==None:
+            progname=arg
+        elif svgfilespec==None:
+            svgfilespec=arg
+        else:
+            # too many arguments
+            print("ERROR: Unknown parameter:",arg)
+            help()
+            exit(1)
+    
+if svgfilespec==None:
+    help()
+    print("ERROR: No input file.",arg)
+    exit(1)        
 
 #svgfilespec="svg\\Plotter face.svg"
 #svgfilespec="svg\\Plotter Brain 1536087723.svg"
