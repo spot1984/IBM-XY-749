@@ -23,5 +23,12 @@ class Color:
     def tuple(self):
         return(self.r,self.g,self.b)
     
+    def difference(self,other):
+        # constants for relative importance from luminance calculation
+        # integers used 
+        return  299*abs(self.r-other.r)+ \
+                587*abs(self.g-other.g)+ \
+                114*abs(self.b-other.b)
+    
     def rnd(self):
         return(randint(0,256),randint(0,256),randint(0,256))
