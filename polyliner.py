@@ -340,7 +340,7 @@ def polyliner(path_strings, segments=10,weldradius=12,quantization=1):
         color=c.rnd()
         for i in range(1,len(polyline)):
             print(plotter.move(polyline[i][0],polyline[i][1]), end ="")
-            imd.line([(polyline[i-1][0],polyline[i-1][1]),(polyline[i][0],polyline[i][1])],fill=color)
+            imd.line([(polyline[i-1][0],polyline[i-1][1]),(polyline[i][0],polyline[i][1])],fill=color,width=3)
         print(plotter.penup(), end ="")
         c.inc(delta)
     print(plotter.penup(), end ="")
