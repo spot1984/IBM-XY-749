@@ -102,51 +102,14 @@ PenVelocity     = "F10,%d\n"
             height 8.5
             scale 250
         All content needs to fit within the page
-        
 
-    LePen colors
-        Pink        ff7299
-        Purple      995db4
-        Cyan        1e9fbb
-        Light Green 43b766
-        Yellow      bcdc72
-        Orange      fba551
-        Red         be302e
-        Green       00544d
-        Blue        190ebf
-        Black       3a362c
-        
-                                        pink             purple      cyan       orange       red         green       blue        light green
-        "svg\\plotter cap-fill.svg" -f  -p0=#ff7299 -p1=#995db4 -p2=#1e9fbb -p3=#fba551 -p4=#be302e -p5=#00544d -p6=#190ebf -p7=#43b766
-        
-                                        pink             purple      cyan       orange       red         green       blue        black
-        "svg\\plotter cap-fill.svg" -f  -p0=#ff7299 -p1=#995db4 -p2=#1e9fbb -p3=#fba551 -p4=#be302e -p5=#00544d -p6=#190ebf -p7=#3a362c
-        
-        "svg\\plotter cap-fill.svg" -f  -p0=#000000 -p1=#202020 -p2=#0000c0 -p3=#c00000 -p4=#00c000 -p5=#800080 -p6=#008080 -p7=#808000
     ToDo:
-        Colors
-            [] Lab Cie matching of color to pen color
-
-            [x] Remove newline stuff from plotter
-            [x] Separate drawing from plotter output
-            [x] Parse path styles and extract stroke:#rrggbb or fill="#DDB893" or fill attribute in path
-            [x] Pass pen colors in on command line: pen colors (optional, default 000000) -p0=#000000
-            [x] what order are pens output?  command line order?  (need test svg)
-            [x] Command line to select fill color or line color (default)
-            [x] Collect polylines for each pen and process accordingly
-            [x] Polyliner should only deal with geometry (to be run on each color)
-            [x] Separate polyliner line generation from screen drawing and plotting
-            [x] Separate polyines by color and assign pens
-            [x] Final render should include all pen colors
-            [x] Output all moves for each pen in order (light to dark recommended)
-
         Models
             Include OpenSCAD pen holder in github
             Penholder in customizer
             Upload pen holders to thingiverse
-            Output should parse geometries and output with pen changes
-     
 '''
+
 import sys
 from xml.dom import minidom
 from polyliner import polyliner
@@ -154,14 +117,20 @@ from PIL import Image,ImageDraw,ImageFont
 from plotter import Plotter
 from color import Color, colorFromString
 
-def help():
+def showhelp():
     print("IBMxy749.py converts svg paths into plotter commands")
+    print("")
+    print("Usage: python ibm_xy_749.py [-h] [-f] [-pn=#RRGGBB] input.svg")
+    print("    input.svg   input .svg file")
+    print("    -f          use fill color instead of default stroke color")
+    print("    -h          display this help message")
+    print("    output      Plotter commands or error messages")
     print("")
     print("Usage to send directly to the plotter:")
     print("    Linux:")
-    print("        python ibm_xy_749.py [-h] [-pn=#RRGGBB] input.svg >/dev/ttyS0")
+    print("        python ibm_xy_749.py input.svg >/dev/ttyS0")
     print("    Windows:")
-    print("        python ibm_xy_749.py [-h] [-pn=#RRGGBB] input.svg >com10:")
+    print("        python ibm_xy_749.py input.svg >com10:")
     print("")
     print("Usage to send to a file:")
     print("    Linux/Windows:")
@@ -192,7 +161,7 @@ for arg in sys.argv:
     argl=arg.lower()
     # -h 
     if argl[0:2]=='-h':
-        help()
+        showhelp()
         exit(0)
     # -f enable fill color usage
     elif argl[0:2]=='-f':
@@ -218,22 +187,15 @@ for arg in sys.argv:
         else:
             # too many arguments
             print("ERROR: Unknown parameter:",arg)
-            help()
+            showhelp()
             exit(1)
     
 if svgfilespec==None:
-    help()
+    showhelp()
     print("ERROR: No input file.",arg)
     exit(1)        
 
-#svgfilespec="svg\\Plotter face.svg"
-#svgfilespec="svg\\Plotter Brain 1536087723.svg"
-#svgfilespec="svg\\Plotter 3d-stanford-bunny-wireframe-polyprismatic.svg"
-#svgfilespec="svg\\Plotter 3d-stanford-bunny-wireframe-polyprismatic color stroke.svg"
-#svgfilespec="svg\\Plotter R2D2.svg"
-#svgfilespec="svg\\plotter cap-fill.svg"
-
-# read the SVG file
+# read and parse the SVG file
 doc = minidom.parse(svgfilespec)
 
 # parse color information from svg
@@ -270,7 +232,7 @@ for path in doc.getElementsByTagName('path'):
         pathcolor=strokecolor
        
     # Select the best matching pen
-    colormaxdiff=9999*255*3
+    colormaxdiff=999999999
     penmatch=0
     for pen in pens.keys():
         pencol=pens[pen][0]
@@ -282,12 +244,10 @@ for path in doc.getElementsByTagName('path'):
     # add the path data to the list for the pen.
     pens[penmatch][1].append(d)
 
-# release svg document
+# release the svg document
 doc.unlink()
 
-
 ###############################################################################
-# stub in variables to be handled later
 quantization=1
 weldradius=0
 
@@ -298,10 +258,6 @@ for pen in pens.keys():
 
 ###############################################################################
 # Output
-
-# stub in variables to be handled later
-welded=0
-welds=0
 
 # Build histogram of polyline lengths
 histogram={}
@@ -335,8 +291,8 @@ if polylinecount>0:
 
 # drawing text size
 imd.text(  (5, 500), 
-            text='welds:%d\nwelded:%d\npolylines:%d\nlongest polyline:%d\npolyline average:%.2f'%
-                (welds,welded,polylinecount,polylinelongest, polylineaverage), 
+            text='polylines:%d\nlongest polyline:%d\npolyline average:%.2f'%
+                (polylinecount,polylinelongest, polylineaverage), 
             font = font,
             fill ="black",  
             align ="left")
