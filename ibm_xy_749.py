@@ -104,6 +104,25 @@ PenVelocity     = "F10,%d\n"
         All content needs to fit within the page
         
 
+    LePen colors
+        Pink        ff7299
+        Purple      995db4
+        Cyan        1e9fbb
+        Light Green 43b766
+        Yellow      bcdc72
+        Orange      fba551
+        Red         be302e
+        Green       00544d
+        Blue        190ebf
+        Black       3a362c
+        
+                                        pink             purple      cyan       orange       red         green       blue        light green
+        "svg\\plotter cap-fill.svg" -f  -p0=#ff7299 -p1=#995db4 -p2=#1e9fbb -p3=#fba551 -p4=#be302e -p5=#00544d -p6=#190ebf -p7=#43b766
+        
+                                        pink             purple      cyan       orange       red         green       blue        black
+        "svg\\plotter cap-fill.svg" -f  -p0=#ff7299 -p1=#995db4 -p2=#1e9fbb -p3=#fba551 -p4=#be302e -p5=#00544d -p6=#190ebf -p7=#3a362c
+        
+        "svg\\plotter cap-fill.svg" -f  -p0=#000000 -p1=#202020 -p2=#0000c0 -p3=#c00000 -p4=#00c000 -p5=#800080 -p6=#008080 -p7=#808000
     ToDo:
         Colors
             x Pass pen colors in on command line: pen colors (optional, default 000000) -p0=#000000
@@ -126,9 +145,10 @@ PenVelocity     = "F10,%d\n"
 '''
 import sys
 from xml.dom import minidom
-from simple import simple
 from polyliner import polyliner
-#from numpy.distutils.fcompiler import none
+from PIL import Image,ImageDraw,ImageFont
+from plotter import Plotter
+from color import Color, colorFromString
 
 def help():
     print("IBMxy749.py converts svg paths into plotter commands")
@@ -153,7 +173,7 @@ def help():
 
 
 # default is one black pen
-pens={0:(0,0,0)}
+pens={0:(Color(0,0,0),[],[])}
 
 # parse parameters
 progname=None
@@ -167,14 +187,14 @@ usefillcolor=False
 for arg in sys.argv:
     argl=arg.lower()
     # -h 
-    if argl[0:1]=='-h':
+    if argl[0:2]=='-h':
         help()
         exit(0)
     # -f enable fill color usage
-    if argl[0:1]=='-f':
+    elif argl[0:2]=='-f':
         usefillcolor=True
     # -p0=#RRGGBB
-    if argl[0:2]=='-p' and arg[3:5]=='=#':
+    elif argl[0:2]=='-p' and arg[3:5]=='=#':
         if len(arg)!=11:
             print('ERROR: Pen format incorrect ("-pn=#RRGGBB"):',arg)
             exit(1)
@@ -182,7 +202,7 @@ for arg in sys.argv:
         red=int(arg[5:7],16)
         green=int(arg[7:9],16)
         blue=int(arg[9:11],16)
-        pens[pen]=(red,green,blue)
+        pens[pen]=(Color(red,green,blue),[],[])
         if pen>7: 
             print("ERROR: Pen out of range (0-7):",pen)
             exit(1)
@@ -210,44 +230,82 @@ if svgfilespec==None:
 # read the SVG file
 doc = minidom.parse(svgfilespec)
 
-'''
-# beginning to parse color information from svg
+# parse color information from svg
 for path in doc.getElementsByTagName('path'):
-    id=path.getAttribute('id')
+    #id=path.getAttribute('id')
+    # path data
     d=path.getAttribute('d')
-    style=path.getAttribute('style')
-    styled=dict(item.split(":") for item in style.split(";"))
-    print(id,style,styled['fill'],styled['stroke'])
-exit(0)
-'''  
+    
+    if usefillcolor:
+        # try to get the fill color from the shape
+        fillcolorstr=path.getAttribute('fill')
+        if len(fillcolorstr)==0:
+            # failed to get the fill color from the shape, try the style
+            style=path.getAttribute('style')
+            styled=dict(item.split(":") for item in style.split(";"))
+            fillcolorstr=styled['fill']
+        if len(fillcolorstr)==7:
+            pathcolor=colorFromString(fillcolorstr)
+        else:
+            print("ERROR: Could not find fill color in path:")
+            print(path)
+            exit(1)
+            
+    else:
+        #use stroke color
+        # path style needed for color
+        style=path.getAttribute('style')
+        styled=dict(item.split(":") for item in style.split(";"))
+        stylecolorstr=styled['stroke']
+        # if no stroke color specified fall back to fill color 
+        if stylecolorstr=='none':
+            stylecolorstr=styled['fill']
+        # if no fill either, fall back to black
+        if stylecolorstr=='none':
+            stylecolorstr='#000000'
+        pathcolor=colorFromString(stylecolorstr)
+    
+    # Select the best matching pen
+    colormaxdiff=9999*255*3
+    penmatch=0
+    for pen in pens.keys():
+        pencol=pens[pen][0]
+        colordiff=pathcolor.difference(pencol)
+        if colordiff<colormaxdiff:
+            colormaxdiff=colordiff
+            penmatch=pen 
+    
+    # add the path data to the list for the pen.
+    pens[penmatch][1].append(d)
 
-path_strings = [path.getAttribute('d') for path
-                in doc.getElementsByTagName('path')]
+# release svg document
 doc.unlink()
 
 
-
-if 0:
-    simple(path_strings)
-else:
-    polylines = polyliner(path_strings,segments=7,quantization=1,weldradius=0)
-
-from PIL import Image,ImageDraw,ImageFont
-from plotter import Plotter
-from color import Color
-
-
+###############################################################################
 # stub in variables to be handled later
 quantization=1
+weldradius=0
+
+# Fuse lines into polylines
+for pen in pens.keys():
+    pens[pen][2].extend(polyliner(pens[pen][1],segments=7,quantization=quantization,weldradius=weldradius))
+
+
+###############################################################################
+# Output
+
+# stub in variables to be handled later
 welded=0
 welds=0
-weldradius=0
 
 # Build histogram of polyline lengths
 histogram={}
-for polyline in polylines:
-    l=len(polyline)
-    histogram[l]=histogram.get(l,0)+1
+for pen in pens.keys():
+    polylines=pens[pen][2]
+    for polyline in polylines:
+        l=len(polyline)
+        histogram[l]=histogram.get(l,0)+1
 
 # Draw image statistics and reference information  
 im= Image.new(mode="RGB", size=(11*250,int(8.5*250)),color=(255,255,255))
@@ -266,7 +324,9 @@ for length,count in histogram.items():
         polylinelongest=length
     polylinecount+=length
     polylineaverage+=length*count
-polylineaverage/=polylinecount
+
+if polylinecount>0:
+    polylineaverage/=polylinecount
 
 # drawing text size
 imd.text(  (5, 500), 
@@ -286,21 +346,24 @@ imd.ellipse((100,700,100+weldradius*2,700+weldradius*2), fill = None, outline ='
 # draw the polylines to the plotter and to the image 
 # open plotter       
 plotter=Plotter()
-#plotter.pen(1)
-c=Color(0,0,0)
-delta=8    
-print(plotter.slow(), end ="")
-for polyline in polylines:
-    print(plotter.move(polyline[0][0],polyline[0][1]), end ="")
-    print(plotter.pendown(), end ="")
-    color=c.rnd()
-    for i in range(1,len(polyline)):
-        print(plotter.move(polyline[i][0],polyline[i][1]), end ="")
-        imd.line([(polyline[i-1][0],polyline[i-1][1]),(polyline[i][0],polyline[i][1])],fill=color,width=3)
+
+for pen in pens.keys():
+    plotter.pen(pen)
+    polylines=pens[pen][2]
+    c=pens[pen][0]
+    delta=8    
+    print(plotter.slow(), end ="")
+    for polyline in polylines:
+        print(plotter.move(polyline[0][0],polyline[0][1]), end ="")
+        print(plotter.pendown(), end ="")
+        color=c.tuple() #.rnd()
+        for i in range(1,len(polyline)):
+            print(plotter.move(polyline[i][0],polyline[i][1]), end ="")
+            imd.line([(polyline[i-1][0],polyline[i-1][1]),(polyline[i][0],polyline[i][1])],fill=color,width=3)
+        print(plotter.penup(), end ="")
+        #c.inc(delta)
     print(plotter.penup(), end ="")
-    c.inc(delta)
-print(plotter.penup(), end ="")
-print(plotter.move(plotter.maxx,plotter.maxy))
+    print(plotter.move(plotter.maxx,plotter.maxy))
 
 # hack: have to print 1024 characters to flush the buffer
 for i in range(16):
