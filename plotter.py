@@ -1,45 +1,48 @@
 # IBM XY/749 (IBM XY/749, CalComp Model 81)
 
-# todo
-#   Move newline stuff out of class and just return strings.
-
 #2690x2060
 class Plotter:
     maxx=2690
     maxy=2060
-    commandsperline=10
-    count=0
-    def newline(self):
-        self.count+=1
-        if self.count>self.commandsperline:
-            self.count=0
-            return "\n"
-        return ""
+
+    # select pen
     def pen(self,pen):
-        return ('f%d;%s'%(pen,self.newline()))#.encode('utf-8')
+        return ('f%d;'%(pen))
+    # fast speed
     def fast(self):
-        return ('f10,30;%s'%(self.newline()))#.encode('utf-8')
+        return ('f10,30;')
+    # slow speed (only when pen is down)
     def slow(self):
-        return ('f10,1;%s'%(self.newline()))#.encode('utf-8')
+        return ('f10,1;')
+    # lift pen
     def penup(self):
-        return ('h%s'%(self.newline()))#.encode('utf-8')
+        return ('h')
+    # lower pen
     def pendown(self):
-        return ('i%s'%(self.newline()))#.encode('utf-8')
+        return ('i')
+    # move pen to absolute location
     def move(self,x,y):
-        return ('%d/%dk%s'%(int(x),int((8.5*250-1)-y),self.newline()))#.encode('utf-8')
+        return ('%d/%dk'%(int(x),int((8.5*250-1)-y)))
+    # move pen to relative location
     def moverelative(self,x,y):
-        return ('%d/%dj%s'%(int(x),int((8.5*250-1)-y),self.newline()))#.encode('utf-8')
+        return ('%d/%dj'%(int(x),int((8.5*250-1)-y)))
+    # draw an x axis
     def xaxis(self,length, intervals, markinglength):
-        return ('x%d,%d,%d;%s'%(length,intervals,markinglength,self.newline()))#.encode('utf-8')
+        return ('x%d,%d,%d;'%(length,intervals,markinglength))
+    # draw a y axis
     def yaxis(self,length, intervals, markinglength):
-        return ('y%d,%d,%d;%s'%(length,intervals,markinglength,self.newline()))#.encode('utf-8')
+        return ('y%d,%d,%d;'%(length,intervals,markinglength))
+    # draw a circular arc
     def circulararc(self,radius,a0,a1):
-        return ('o0 %d,%d,%d;%s'%(radius,a0,a1,self.newline()))#.encode('utf-8')
+        return ('o0 %d,%d,%d;'%(radius,a0,a1))
+    # set text size
     def textsize(self,size):
-        return ('z%d;%s'%(size,self.newline()))#.encode('utf-8')
+        return ('z%d;'%(size))
+    # print text string
     def text(self,string):
-        return ('b%s\r;%s'%(string,self.newline()))#.encode('utf-8')
+        return ('b%s\r;'%(string))
+    # place a marker (graphical icon)
     def mark(self,mark):
-        return ('m%d;%s'%(mark,self.newline()))#.encode('utf-8')
+        return ('m%d;'%(mark))
     
         

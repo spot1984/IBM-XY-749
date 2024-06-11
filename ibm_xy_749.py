@@ -126,8 +126,8 @@ PenVelocity     = "F10,%d\n"
     ToDo:
         Colors
             [] Lab Cie matching of color to pen color
-            [] Remove newline stuff from plotter
 
+            [x] Remove newline stuff from plotter
             [x] Separate drawing from plotter output
             [x] Parse path styles and extract stroke:#rrggbb or fill="#DDB893" or fill attribute in path
             [x] Pass pen colors in on command line: pen colors (optional, default 000000) -p0=#000000
@@ -360,21 +360,38 @@ im.show()
 ###############################################################################
 # Plotter output
 
-# draw the polylines to the plotter and to the image 
+# helper class to output a fixed number of commands per line
+class NewLine():
+    commandsperline=10
+    count=0
+    def newline(self):
+        self.count+=1
+        if self.count>self.commandsperline:
+            self.count=0
+            return "\n"
+        return ""
+
+nl=NewLine()
+
 # open plotter       
 plotter=Plotter()
+# loop through pens
 for pen in pens.keys():
-    print(plotter.penup(), end ="")
-    print(plotter.pen(pen))
+    # select pen
+    print(plotter.penup(), end=nl.newline())
+    print(plotter.pen(pen), end=nl.newline())
+    # loop through polylines
     polylines=pens[pen][2]
-    print(plotter.slow(), end ="")
+    print(plotter.slow(), end=nl.newline())
     for polyline in polylines:
-        print(plotter.move(polyline[0][0],polyline[0][1]), end ="")
-        print(plotter.pendown(), end ="")
+        print(plotter.move(polyline[0][0],polyline[0][1]), end=nl.newline())
+        print(plotter.pendown(), end=nl.newline())
         for i in range(1,len(polyline)):
-            print(plotter.move(polyline[i][0],polyline[i][1]), end ="")
-        print(plotter.penup(), end ="")
-    print(plotter.move(plotter.maxx,plotter.maxy))
+            print(plotter.move(polyline[i][0],polyline[i][1]), end=nl.newline())
+        print(plotter.penup(), end=nl.newline())
+# when done lift pen and move out of the way    
+print(plotter.penup(), end=nl.newline())
+print(plotter.move(plotter.maxx,plotter.maxy))
 
 # hack: have to print 1024 characters to flush the buffer
 for i in range(16):
