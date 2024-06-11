@@ -125,16 +125,20 @@ PenVelocity     = "F10,%d\n"
         "svg\\plotter cap-fill.svg" -f  -p0=#000000 -p1=#202020 -p2=#0000c0 -p3=#c00000 -p4=#00c000 -p5=#800080 -p6=#008080 -p7=#808000
     ToDo:
         Colors
-            x Pass pen colors in on command line: pen colors (optional, default 000000) -p0=#000000
-            Parse path styles and extract stroke:#rrggbb or fill="#DDB893"
-            Lab Cie or Hue matching of color to pen color
-            Command line to select fill color or line color (default)
-            Collect polylines for each pen and process accordingly
-            Polyliner should only deal with geometry (to be run on each color)
-            Separate polyliner line generation from screen drawing and plotting
-            Separate polyines by color and assign pens
-            Final render should include all colors
-            Output all moves for each pen in order (light to dark recommended)
+            [] Lab Cie matching of color to pen color
+            [] Remove newline stuff from plotter
+
+            [x] Separate drawing from plotter output
+            [x] Parse path styles and extract stroke:#rrggbb or fill="#DDB893" or fill attribute in path
+            [x] Pass pen colors in on command line: pen colors (optional, default 000000) -p0=#000000
+            [x] what order are pens output?  command line order?  (need test svg)
+            [x] Command line to select fill color or line color (default)
+            [x] Collect polylines for each pen and process accordingly
+            [x] Polyliner should only deal with geometry (to be run on each color)
+            [x] Separate polyliner line generation from screen drawing and plotting
+            [x] Separate polyines by color and assign pens
+            [x] Final render should include all pen colors
+            [x] Output all moves for each pen in order (light to dark recommended)
 
         Models
             Include OpenSCAD pen holder in github
@@ -225,7 +229,9 @@ if svgfilespec==None:
 #svgfilespec="svg\\Plotter face.svg"
 #svgfilespec="svg\\Plotter Brain 1536087723.svg"
 #svgfilespec="svg\\Plotter 3d-stanford-bunny-wireframe-polyprismatic.svg"
+#svgfilespec="svg\\Plotter 3d-stanford-bunny-wireframe-polyprismatic color stroke.svg"
 #svgfilespec="svg\\Plotter R2D2.svg"
+#svgfilespec="svg\\plotter cap-fill.svg"
 
 # read the SVG file
 doc = minidom.parse(svgfilespec)
@@ -235,36 +241,34 @@ for path in doc.getElementsByTagName('path'):
     #id=path.getAttribute('id')
     # path data
     d=path.getAttribute('d')
+    style=path.getAttribute('style')
+    styled=dict(item.split(":") for item in style.split(";"))
     
+    # get fill color if it exists
+    fillcolorstr=path.getAttribute('fill')
+    if len(fillcolorstr)==0:
+        # failed to get the fill color from the shape, try the style
+        fillcolorstr=styled.get('fill')
+    # parse the fill color string
+    if fillcolorstr==None or len(fillcolorstr)!=7:
+        # if no fill color can be found, set to black
+        fillcolorstr='#000000'
+    fillcolor=colorFromString(fillcolorstr)
+    
+    # get stroke color if it exists
+    # path style needed for color
+    stylecolorstr=styled['stroke']
+    # if no stroke color specified fall back to fill color 
+    if stylecolorstr=='none':
+        stylecolorstr='#000000'
+    strokecolor=colorFromString(stylecolorstr)
+    
+    # select color needed, only fallback to black
     if usefillcolor:
-        # try to get the fill color from the shape
-        fillcolorstr=path.getAttribute('fill')
-        if len(fillcolorstr)==0:
-            # failed to get the fill color from the shape, try the style
-            style=path.getAttribute('style')
-            styled=dict(item.split(":") for item in style.split(";"))
-            fillcolorstr=styled['fill']
-        if len(fillcolorstr)==7:
-            pathcolor=colorFromString(fillcolorstr)
-        else:
-            print("ERROR: Could not find fill color in path:")
-            print(path)
-            exit(1)
-            
+        pathcolor=fillcolor
     else:
-        #use stroke color
-        # path style needed for color
-        style=path.getAttribute('style')
-        styled=dict(item.split(":") for item in style.split(";"))
-        stylecolorstr=styled['stroke']
-        # if no stroke color specified fall back to fill color 
-        if stylecolorstr=='none':
-            stylecolorstr=styled['fill']
-        # if no fill either, fall back to black
-        if stylecolorstr=='none':
-            stylecolorstr='#000000'
-        pathcolor=colorFromString(stylecolorstr)
-    
+        pathcolor=strokecolor
+       
     # Select the best matching pen
     colormaxdiff=9999*255*3
     penmatch=0
@@ -307,6 +311,7 @@ for pen in pens.keys():
         l=len(polyline)
         histogram[l]=histogram.get(l,0)+1
 
+###############################################################################
 # Draw image statistics and reference information  
 im= Image.new(mode="RGB", size=(11*250,int(8.5*250)),color=(255,255,255))
 imd=ImageDraw.Draw(im)
@@ -343,35 +348,38 @@ imd.rectangle((100,700,100+quantization-1,700+quantization-1), fill = None, outl
 # weld radius circle
 imd.ellipse((100,700,100+weldradius*2,700+weldradius*2), fill = None, outline ='blue')
 
+for pen in pens.keys():
+    polylines=pens[pen][2]
+    pencolor=pens[pen][0]
+    for polyline in polylines:
+        color=pencolor.tuple()
+        for i in range(1,len(polyline)):
+            imd.line([(polyline[i-1][0],polyline[i-1][1]),(polyline[i][0],polyline[i][1])],fill=color,width=3)
+im.show()
+
+###############################################################################
+# Plotter output
+
 # draw the polylines to the plotter and to the image 
 # open plotter       
 plotter=Plotter()
-
 for pen in pens.keys():
-    plotter.pen(pen)
+    print(plotter.penup(), end ="")
+    print(plotter.pen(pen))
     polylines=pens[pen][2]
-    c=pens[pen][0]
-    delta=8    
     print(plotter.slow(), end ="")
     for polyline in polylines:
         print(plotter.move(polyline[0][0],polyline[0][1]), end ="")
         print(plotter.pendown(), end ="")
-        color=c.tuple() #.rnd()
         for i in range(1,len(polyline)):
             print(plotter.move(polyline[i][0],polyline[i][1]), end ="")
-            imd.line([(polyline[i-1][0],polyline[i-1][1]),(polyline[i][0],polyline[i][1])],fill=color,width=3)
         print(plotter.penup(), end ="")
-        #c.inc(delta)
-    print(plotter.penup(), end ="")
     print(plotter.move(plotter.maxx,plotter.maxy))
 
 # hack: have to print 1024 characters to flush the buffer
 for i in range(16):
     print(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;")
 print()
-    
-im.show()
-
 
 # release plotter
 plotter=None
