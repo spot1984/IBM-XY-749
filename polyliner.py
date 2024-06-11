@@ -1,10 +1,5 @@
 from svg.path import parse_path
 from svg.path.path import Line, Arc, QuadraticBezier, CubicBezier,Move,Close
-#from PIL import Image,ImageDraw,ImageFont
-#from plotter import Plotter
-#from color import Color
-from pickle import NONE
-from scipy.spatial import distance
 
 def pointtuple(p,quantization):
     return (int(p.real/quantization)*quantization, int(p.imag/quantization)*quantization)
@@ -115,7 +110,8 @@ def polyliner(path_strings, segments=10,weldradius=12,quantization=1):
                 adduniqueline(endi,firsti)
                 firsti=None
                 
-    # debug show the image as read    
+    '''            
+    # debug show the source image as read    
     if False:
         from PIL import Image,ImageDraw
         from color import Color
@@ -129,7 +125,8 @@ def polyliner(path_strings, segments=10,weldradius=12,quantization=1):
             imd.line([p0,p1],fill=c.tuple())
             c.inc(delta)
         im.show()
-                        
+    '''
+                                    
     # convert lines set into indexable list
     lines=list(lines)
 
