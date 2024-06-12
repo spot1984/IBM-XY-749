@@ -332,21 +332,31 @@ nl=NewLine()
 # open plotter       
 plotter=Plotter()
 # loop through pens
+lastpen=-1
 for pen in pens.keys():
-    # select pen
-    print(plotter.penup(), end=nl.newline())
-    print(plotter.pen(pen), end=nl.newline())
-    # loop through polylines
     polylines=pens[pen][2]
-    print(plotter.slow(), end=nl.newline())
-    for polyline in polylines:
-        print(plotter.move(polyline[0][0],polyline[0][1]), end=nl.newline())
-        print(plotter.pendown(), end=nl.newline())
-        for i in range(1,len(polyline)):
-            print(plotter.move(polyline[i][0],polyline[i][1]), end=nl.newline())
+    # only select pen if there is a pen to select
+    if len(polylines)>0:
+        # select pen
         print(plotter.penup(), end=nl.newline())
-# when done lift pen and move out of the way    
+        print(plotter.pen(pen), end=nl.newline())
+        lastpen=pen
+        # draw slowly
+        print(plotter.slow(), end=nl.newline())
+        # loop through polylines
+        for polyline in polylines:
+            print(plotter.move(polyline[0][0],polyline[0][1]), end=nl.newline())
+            print(plotter.pendown(), end=nl.newline())
+            for i in range(1,len(polyline)):
+                print(plotter.move(polyline[i][0],polyline[i][1]), end=nl.newline())
+            print(plotter.penup(), end=nl.newline())
+# done 
+# lift pen    
 print(plotter.penup(), end=nl.newline())
+# put the last pen away
+if lastpen>=0:
+    print(plotter.pen(pen), end=nl.newline())
+# move the carriage out of the way
 print(plotter.move(plotter.maxx,plotter.maxy))
 
 # hack: have to print 1024 characters to flush the buffer
