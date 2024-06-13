@@ -89,22 +89,37 @@ class Color:
 
     # compare this color to another, return a difference for comparisons
     def difference(self,other):
-        algorithm=2
+        algorithm=4
         if algorithm==0:
-            # straight RGB comparison (squaring terms could improve performance) 
+            # sum of absolute RGB difference (squaring terms could improve performance) 
             return  abs(self.r-other.r)+ \
                     abs(self.g-other.g)+ \
                     abs(self.b-other.b)
         elif algorithm==1:
-            # luminance weighted RGB comparison (squaring terms could improve performance)
+            # sum of RGB difference squared
+            return  np.power(self.r-other.r,2)+ \
+                    np.power(self.g-other.g,2)+ \
+                    np.power(self.b-other.b,2)
+        elif algorithm==2:
+            # sum of luminance weighted RGB difference (squaring terms could improve performance)
             return  299*abs(self.r-other.r)+ \
                     587*abs(self.g-other.g)+ \
                     114*abs(self.b-other.b)
+        elif algorithm==3:
+            # sum of luminance weighted RGB difference squared 
+            return  np.power(.299*(self.r-other.r),2)+ \
+                    np.power(.587*(self.g-other.g),2)+ \
+                    np.power(.114*(self.b-other.b),2)
         else:
-            # distance squared in Lab CIE space
+            # distance squared in Lab CIE space (best)
             slab=self.lab()
             olab=other.lab()
-            return np.power(slab[0]-olab[0],2)+np.power(slab[1]-olab[1],2)+np.power(slab[2]-olab[2],2)
+            # empirical best weights based on LePen colors and color cube test
+            lweight=0.5
+            abweight=1.0
+            return  np.power(lweight *(slab[0]-olab[0]),2)+ \
+                    np.power(abweight*(slab[1]-olab[1]),2)+ \
+                    np.power(abweight*(slab[2]-olab[2]),2)
         
     # return as a tuple
     def tuple(self):
