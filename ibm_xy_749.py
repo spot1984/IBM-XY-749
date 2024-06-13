@@ -121,10 +121,11 @@ def showhelp():
     print("IBMxy749.py converts svg paths into plotter commands")
     print("")
     print("Usage: python ibm_xy_749.py [-h] [-f] [-pn=#RRGGBB] input.svg")
-    print("    input.svg   input .svg file")
-    print("    -f          use fill color instead of default stroke color")
-    print("    -h          display this help message")
-    print("    output      Plotter commands or error messages")
+    print("    input.svg       input .svg file")
+    print("    -f              use fill color instead of default stroke color")
+    print("    -h              display this help message")
+    print("    [-pn=#RRGGBB]   set pen color where n is pen 1-8")
+    print("    output          Plotter commands or error messages")
     print("")
     print("Usage to send directly to the plotter:")
     print("    Linux:")
@@ -146,7 +147,7 @@ def showhelp():
 
 
 # default is one black pen
-pens={0:(Color(0,0,0),[],[])}
+pens={1:(Color(0,0,0),[],[])}
 
 # parse parameters
 progname=None
@@ -176,8 +177,8 @@ for arg in sys.argv:
         green=int(arg[7:9],16)
         blue=int(arg[9:11],16)
         pens[pen]=(Color(red,green,blue),[],[])
-        if pen>7: 
-            print("ERROR: Pen out of range (0-7):",pen)
+        if pen<1 or pen>8: 
+            print("ERROR: Pen out of range (1-8):",pen)
             exit(1)
     else:
         if progname==None:
@@ -219,9 +220,10 @@ for path in doc.getElementsByTagName('path'):
     
     # get stroke color if it exists
     # path style needed for color
-    stylecolorstr=styled['stroke']
-    # if no stroke color specified fall back to fill color 
-    if stylecolorstr=='none':
+    if 'stroke' in styled:
+        stylecolorstr=styled['stroke']
+    else:
+        # if no stroke color specified, assume black 
         stylecolorstr='#000000'
     strokecolor=colorFromString(stylecolorstr)
     
@@ -233,7 +235,7 @@ for path in doc.getElementsByTagName('path'):
        
     # Select the best matching pen
     colormaxdiff=999999999
-    penmatch=0
+    penmatch=1
     for pen in pens.keys():
         pencol=pens[pen][0]
         colordiff=pathcolor.difference(pencol)
